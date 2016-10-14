@@ -63,6 +63,7 @@ public class PhabricatorNotifier extends Notifier {
     // Post a comment on success. Useful for lengthy builds.
     private final boolean commentOnSuccess;
     private final boolean uberallsEnabled;
+    private final boolean uberallsFailDecreased;
     private final boolean commentWithConsoleLinkOnFailure;
     private final boolean preserveFormatting;
     private final String commentFile;
@@ -74,11 +75,13 @@ public class PhabricatorNotifier extends Notifier {
 
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
-    public PhabricatorNotifier(boolean commentOnSuccess, boolean uberallsEnabled, boolean preserveFormatting,
-                               String commentFile, String commentSize, boolean commentWithConsoleLinkOnFailure,
-                               boolean customComment, boolean processLint, String lintFile, String lintFileSize) {
+    public PhabricatorNotifier(boolean commentOnSuccess, boolean uberallsEnabled, boolean uberallsFailDecreased,
+                               boolean preserveFormatting, String commentFile, String commentSize,
+                               boolean commentWithConsoleLinkOnFailure, boolean customComment, boolean processLint,
+                               String lintFile, String lintFileSize) {
         this.commentOnSuccess = commentOnSuccess;
         this.uberallsEnabled = uberallsEnabled;
+        this.uberallsFailDecreased = uberallsFailDecreased;
         this.commentFile = commentFile;
         this.commentSize = commentSize;
         this.lintFile = lintFile;
@@ -202,7 +205,10 @@ public class PhabricatorNotifier extends Notifier {
         );
 
         if (uberallsEnabled) {
-            resultProcessor.processParentCoverage(uberallsClient);
+            boolean passBuildOnUberalls = resultProcessor.processParentCoverage(uberallsClient);
+            if (!passBuildOnUberalls && uberallsFailDecreased) {
+                build.setResult(Result.FAILURE);
+            }
         }
 
         // Add in comments about the build result
