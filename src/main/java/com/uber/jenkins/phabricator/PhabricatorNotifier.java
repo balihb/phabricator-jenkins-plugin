@@ -72,6 +72,7 @@ public class PhabricatorNotifier extends Notifier {
     private final boolean processLint;
     private final String lintFile;
     private final String lintFileSize;
+    private UberallsClient uberallsClient;
 
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
@@ -109,12 +110,10 @@ public class PhabricatorNotifier extends Notifier {
         }
 
         final String branch = environment.get("GIT_BRANCH");
-        final UberallsClient uberallsClient = new UberallsClient(
-                getDescriptor().getUberallsURL(),
-                logger,
-                environment.get("GIT_URL"),
-                branch
-        );
+        final String gitUrl = environment.get("GIT_URL");
+
+        final UberallsClient uberallsClient = getUberallsClient(logger, gitUrl, branch);
+
         final boolean needsDecoration = build.getActions(PhabricatorPostbuildAction.class).size() == 0;
 
         final String diffID = environment.get(PhabricatorPlugin.DIFFERENTIAL_ID_FIELD);
@@ -235,6 +234,23 @@ public class PhabricatorNotifier extends Notifier {
         resultProcessor.sendComment(commentWithConsoleLinkOnFailure);
 
         return true;
+    }
+
+    protected UberallsClient getUberallsClient(Logger logger, String gitUrl, String branch) {
+        if (uberallsClient != null) {
+            return uberallsClient;
+        }
+        return new UberallsClient(
+                getDescriptor().getUberallsURL(),
+                logger,
+                gitUrl,
+                branch
+        );
+    }
+
+    // Just for testing
+    protected void setUberallsClient(UberallsClient client) {
+        uberallsClient = client;
     }
 
     private ConduitAPIClient getConduitClient(Job owner) throws ConduitAPIException {
